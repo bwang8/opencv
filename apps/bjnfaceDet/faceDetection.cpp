@@ -21,11 +21,11 @@ void detectAndDisplay( Mat frame );
 
 /** Global variables */
 //-- Note, either copy these two files from opencv/data/haarscascades to your current folder, or change these locations
-string fface_cas_fn = "haarcascade_frontalface_alt.xml";
-string pface_cas_fn = "haarcascade_profileface.xml";
+string fface_cas_fn = "../../data/haarcascades/haarcascade_frontalface_alt.xml";
+string pface_cas_fn = "../../data/haarcascades/haarcascade_profileface.xml";
 
-string fface_lbp_cas_fn = "lbpcascade_frontalface.xml";
-string pface_lbp_cas_fn = "lbpcascade_profileface.xml";
+string fface_lbp_cas_fn = "../../data/lbpcascades/lbpcascade_frontalface.xml";
+string pface_lbp_cas_fn = "../../data/lbpcascades/lbpcascade_profileface.xml";
 //string eyes_cascade_name = "haarcascade_eye_tree_eyeglasses.xml";
 
 CascadeClassifier frontal_face_cascade;
@@ -80,7 +80,7 @@ void detectAndDisplay( Mat frame )
 {
   //lower the resolution so to speed up detection
   Mat dsframe; //down sampled frame
-  resize( frame, dsframe, Size(0,0), 0.5, 0.5);
+  resize( frame, dsframe, Size(0,0), 0.2, 0.2);
 
   std::vector<Rect> faces;
   std::vector<Rect> pfaces;
