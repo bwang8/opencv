@@ -54,7 +54,7 @@ int main( void )
     for(;;)
     {
       double t = (double)getTickCount();
-      frame = cv::cvarrToMat(cvQueryFrame( capture ));
+      frame = cvarrToMat(cvQueryFrame( capture ));
 
       //-- 3. Apply the classifier to the frame
       if( !frame.empty() )
@@ -67,7 +67,6 @@ int main( void )
 
       int c = waitKey(10);
       if( (char)c == 'x' ) { break; }
-
     }
   }
   return 0;
@@ -80,7 +79,7 @@ void detectAndDisplay( Mat frame )
 {
   //lower the resolution so to speed up detection
   Mat dsframe; //down sampled frame
-  resize( frame, dsframe, Size(0,0), 0.2, 0.2);
+  resize( frame, dsframe, Size(0,0), 0.5, 0.5);
 
   std::vector<Rect> faces;
   std::vector<Rect> pfaces;
