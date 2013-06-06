@@ -19,6 +19,8 @@ Point origin;
 Rect selection;
 int vmin = 10, vmax = 256, smin = 30;
 
+bool hueMode = false;
+
 static void onMouse( int event, int x, int y, int, void* )
 {
     if( selectObject )
@@ -74,7 +76,7 @@ int main( int argc, const char** argv )
 
     VideoCapture cap;
     Rect trackWindow;
-    int hsize = 16;
+    int hsize = 32;
     float hranges[] = {0,180};
     const float* phranges = hranges;
     CommandLineParser parser(argc, argv, keys);
@@ -103,6 +105,8 @@ int main( int argc, const char** argv )
 
     for(;;)
     {
+        //double t = (double)getTickCount();
+
         if( !paused )
         {
             cap >> frame;
@@ -131,6 +135,7 @@ int main( int argc, const char** argv )
                     Mat roi(hue, selection), maskroi(mask, selection);
                     calcHist(&roi, 1, 0, maskroi, hist, 1, &hsize, &phranges);
                     normalize(hist, hist, 0, 255, NORM_MINMAX);
+                    //printf("%d %d\n", hist.size().width, hist.size().height);
 
                     trackWindow = selection;
                     trackObject = 1;
@@ -153,18 +158,26 @@ int main( int argc, const char** argv )
 
                 calcBackProject(&hue, 1, 0, hist, backproj, &phranges);
                 backproj &= mask;
+
+                //printf("trackWindow : %d %d %d %d\n", trackWindow.x, trackWindow.y, trackWindow.width, trackWindow.height);
                 RotatedRect trackBox = CamShift(backproj, trackWindow,
                                     TermCriteria( TermCriteria::EPS | TermCriteria::COUNT, 10, 1 ));
-                if( trackWindow.area() <= 1 )
+
+                //printf("trackBox : %d %d %d %d\n", trackBox.boundingRect().x, trackBox.boundingRect().y, 
+                //    trackBox.boundingRect().width, trackBox.boundingRect().height);
+                //printf("trackWindow : %d %d %d %d\n", trackWindow.x, trackWindow.y, trackWindow.width, trackWindow.height);
+                /*if( trackWindow.area() <= 1 )
                 {
                     int cols = backproj.cols, rows = backproj.rows, r = (MIN(cols, rows) + 5)/6;
                     trackWindow = Rect(trackWindow.x - r, trackWindow.y - r,
                                        trackWindow.x + r, trackWindow.y + r) &
                                   Rect(0, 0, cols, rows);
-                }
+                }*/
 
                 if( backprojMode )
                     cvtColor( backproj, image, COLOR_GRAY2BGR );
+                else if( hueMode )
+                    cvtColor( hue, image, COLOR_GRAY2BGR );
                 ellipse( image, trackBox, Scalar(0,0,255), 3, LINE_AA );
             }
         }
@@ -179,6 +192,9 @@ int main( int argc, const char** argv )
 
         imshow( "CamShift Demo", image );
         imshow( "Histogram", histimg );
+
+        //t = ((double)getTickCount() - t)/getTickFrequency();
+        //printf("time per camshift cycle: %f\n", t);
 
         char c = (char)waitKey(10);
         if( c == 27 )
@@ -202,9 +218,13 @@ int main( int argc, const char** argv )
         case 'p':
             paused = !paused;
             break;
+        //case 'u':
+        //    hueMode = !hueMode;
+        //    break;
         default:
             ;
         }
+        
     }
 
     return 0;

@@ -1,13 +1,23 @@
-all: detTrack faceDet objDet
+CC = g++
+CFLAGS = `pkg-config --cflags opencv`
+LDFLAGS = `pkg-config --libs opencv`
 
-detTrack: det_n_track.cpp
-	g++ -o detTrack -g det_n_track.cpp -I/usr/local/include/opencv -I/usr/local/include  -L/usr/local/lib -lopencv_core -lopencv_imgproc -lopencv_highgui -lopencv_ml -lopencv_video -lopencv_features2d -lopencv_calib3d -lopencv_objdetect -lopencv_contrib -lopencv_legacy -lopencv_flann
+all: dettrackdemo faceDet objDet
 
+dettrackdemo: objdettrack.o dettrackdemo.cpp
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ -g $+
+
+objdettrack.o: objdettrack.cpp
+	$(CC) $(CFLAGS) -o $@ -c -g $+
+
+## Non important example code test/play to learn opencv
 faceDet: faceDetection.cpp
-	g++ -o faceDet -g faceDetection.cpp -I/usr/local/include/opencv -I/usr/local/include  -L/usr/local/lib -lopencv_core -lopencv_imgproc -lopencv_highgui -lopencv_ml -lopencv_video -lopencv_features2d -lopencv_calib3d -lopencv_objdetect -lopencv_contrib -lopencv_legacy -lopencv_flann
+	$(CC) $(CFLAGS) $(LDFLAGS) -o faceDet -g faceDetection.cpp 
 
 objDet: objectDetection.cpp
-	g++ -o objDet -g objectDetection.cpp -I/usr/local/include/opencv -I/usr/local/include  -L/usr/local/lib -lopencv_core -lopencv_imgproc -lopencv_highgui -lopencv_ml -lopencv_video -lopencv_features2d -lopencv_calib3d -lopencv_objdetect -lopencv_contrib -lopencv_legacy -lopencv_flann
+	$(CC) $(CFLAGS) $(LDFLAGS) -o objDet -g objectDetection.cpp 
+##
 
 clean:
-	rm faceDet objDet
+	rm *.o faceDet objDet dettrackdemo
+	rm -r *.dSYM/ 
