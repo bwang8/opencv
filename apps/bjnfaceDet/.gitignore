@@ -1,4 +1,8 @@
 faceDet
 objDet
+a.out
+dettrackdemo
 detTrack
 *.dSYM/
+*.o
+opencv_playing.cpp
