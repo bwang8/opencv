@@ -33,6 +33,7 @@ int main(){
 
   //create display window
   namedWindow("haar cascade and camshift", 0);
+  namedWindow("confidence map");
 
   /*
     detect-cycle 
@@ -51,7 +52,7 @@ int main(){
   int detOrTrackFlag = 0; //0 for detection, 1 for tracking
   int num_tracked_objects = 0;
 
-  ObjDetTrack faceDT = ObjDetTrack(allCas, vector<Mat>(),0.5);
+  ObjDetTrack faceDT = ObjDetTrack(allCas, vector<Mat>(), 0.7, Mat());
 
   for(int cycle = 0; ;cycle++){
     cap>>currframe;
@@ -62,6 +63,7 @@ int main(){
     //display
     Mat dispWindow;
     currframe.copyTo(dispWindow);
+    Mat confMap;
 
     switch(detOrTrackFlag){
     //DETECTION PHASE
@@ -75,14 +77,19 @@ int main(){
         faceDT.setObjHueHist(vector<Mat>()); //clear to regenerate color histogram
       }
 
-      break;
+      confMap = faceDT.updateConfidenceMap(detResult, 0, currframe.size());
+      imshow("confidence map", confMap);
+
+      if(detOrTrackFlag == 0) break;
+      //else continue to tracking phase without getting a new frame from webcam
+      //that way with quick movement, you would not use outdated detection window on new capture
     //TRACKING PHASE
     case 1:
       //make camTracking return flags that warn about signs of false detection/tracking
       faceDT.camTracking(currframe, detResult, dispWindow);
 
       //redo detection if too many cycles passed without a detection phase
-      if(cycle%30 == 0){
+      if(cycle%60 == 0){
         detOrTrackFlag = 0;
       }
 
@@ -97,7 +104,11 @@ int main(){
 
       //redo detection if horizontal:vertical window ratio is too high
       //expect face to be upright
+      //sanity check on detection sizes
+      
 
+      confMap = faceDT.updateConfidenceMap(detResult, 1, currframe.size());
+      imshow("confidence map", confMap);
       break;
     }
     char c = (char)waitKey(10);

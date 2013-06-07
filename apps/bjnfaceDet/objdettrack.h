@@ -16,15 +16,16 @@ using namespace cv;
 class ObjDetTrack{
 public:
   vector<Rect> casDetect(const Mat& currframe, Mat& dispWindow, bool detectAfterRot=false);
-  void camTracking(const Mat& currframe, vector<Rect>& trackingWindow, Mat& dispWindow);
+  vector<Rect> camTracking(const Mat& currframe, vector<Rect>& trackingWindow, Mat& dispWindow);
   void removeOverlapWindows(Size frameSize, vector<Rect>& trackingWindow, double overlap_frac_criteria=0.5);
+  Mat updateConfidenceMap(vector<Rect> detResult, int detOrTrackUpdateFlag, Size2i mapSize);
 
   //debugging display functions
   void displayFaceBox(string winName, Mat& frame, vector<Rect> cascadeDetectionResults);
   void displayColorHist(string winName, int hsize, Mat& hist);
 
   ObjDetTrack();
-  ObjDetTrack(vector<CascadeClassifier> allcas, vector<Mat> objHueHist, double shrinkratio);
+  ObjDetTrack(vector<CascadeClassifier> allcas, vector<Mat> objHueHist, double shrinkratio, Mat newConfidenceMap);
   vector<CascadeClassifier> getAllCas();
   void setAllCas(vector<CascadeClassifier> newAllCas);
   vector<Mat> getObjHueHist();
@@ -36,6 +37,7 @@ private:
   vector<CascadeClassifier> allcas;
   vector<Mat> objHueHist; 
   double shrinkratio;
+  Mat confidenceMap;
 
   //helper for CAMshift tracking
   void histPeakAccent(Mat& hist, int farthestBinFromPeak);

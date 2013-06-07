@@ -1,57 +1,39 @@
 #include "objdettrack.h"
 
-void printRotM(Mat revRotM, string title){
-    printf("===%s\n",title.c_str());
-    printf("affM.size %d %d\n",revRotM.rows,revRotM.cols);
-    printf("affM: %f %f %f\n",revRotM.at<double>(0,0),revRotM.at<double>(0,1),revRotM.at<double>(0,2));
-    printf("affM: %f %f %f\n",revRotM.at<double>(1,0),revRotM.at<double>(1,1),revRotM.at<double>(1,2));
-}
-
-vector<Rect> ObjDetTrack::revRotOnRects(vector<Rect> rotDetResult, Mat revRotM, Size2f orig_size){
-  vector<Rect> casResultOrigCoord;
-
-  //Probably use minAreaRect next time I refactor this
-  //minAreaRect finds me the bounding RotatedRect which I can use to find 
-  //the bounding Rect around the RotatedRect
-
-  for(int j=0; j<rotDetResult.size(); j++){
-    Rect cr = rotDetResult[j];
-    Point2f crinit[] = 
-      {transformPt(revRotM, Point2f(cr.x,cr.y)),
-       transformPt(revRotM, Point2f(cr.x+cr.width,cr.y)),
-       transformPt(revRotM, Point2f(cr.x,cr.y+cr.height)),
-       transformPt(revRotM, Point2f(cr.x+cr.width,cr.y+cr.height))};
-
-    int min_x = orig_size.width;
-    int max_x = 0;
-    int min_y = orig_size.height;
-    int max_y = 0;
-    for(int i=0; i<4; i++){
-      min_x = min((int)crinit[i].x, min_x);
-      max_x = max((int)crinit[i].x, max_x);
-      min_y = min((int)crinit[i].y, min_y);
-      max_y = max((int)crinit[i].y, max_y);
-    }
-    min_x = max(min_x, 0);
-    max_x = min(max_x, (int)orig_size.width);
-    min_y = max(min_y, 0);
-    max_y = min(max_y, (int)orig_size.height);
-    casResultOrigCoord.push_back( Rect(Point2f(min_x,min_y),Size2f(max_x-min_x,max_y-min_y)) );
+Mat ObjDetTrack::updateConfidenceMap(vector<Rect> detResult, int detOrTrackUpdateFlag, Size2i mapSize){
+  if( confidenceMap.empty() || detOrTrackUpdateFlag == 0){
+    printf("initializing new confidence map\n");
+    confidenceMap = Mat::ones(mapSize, CV_32FC1);
+    normalize(confidenceMap, confidenceMap, mapSize.area(), 0, NORM_L1);
   }
 
-  return casResultOrigCoord; 
-}
+  for(int i=0; i<detResult.size(); i++){
+    Mat confroi;
+    if(detOrTrackUpdateFlag == 0){
+      //expand window in y direction (heighten/elongate) if detection 
+      detResult[i].y = max(detResult[i].y-0.3*detResult[i].height, 0.0);
+      detResult[i].height = min(1.6*detResult[i].height, (double)mapSize.height-detResult[i].y);
 
-Point2f ObjDetTrack::transformPt(Mat affM, Point2f pt){
-  return Point2f(
-    affM.at<double>(0,0)*pt.x+affM.at<double>(0,1)*pt.y+affM.at<double>(0,2),
-    affM.at<double>(1,0)*pt.x+affM.at<double>(1,1)*pt.y+affM.at<double>(1,2));
-}
+      confroi = confidenceMap(detResult[i]);
+      confroi = 3; 
+      //constant because this is detection phase, confidence map resets at beginning of phase
+    } else{
+      //expand window in x direction (widen) if tracking
+      detResult[i].x = max(detResult[i].x-0.2*detResult[i].width, 0.0);
+      detResult[i].width = min(1.4*detResult[i].width, (double)mapSize.width-detResult[i].x);
 
+      confroi = confidenceMap(detResult[i]);
+      confroi = 2;
+    }
+  }
+
+  normalize(confidenceMap, confidenceMap, mapSize.area(), 0, NORM_L1);
+  return confidenceMap;
+}
 
 vector<Rect> ObjDetTrack::casDetect(const Mat& currframe, Mat& dispWindow, bool detectAfterRot){
   //lower the resolution so to speed up detection
-  //double shrinkratio = 0.2;
+  //printf("=====shrinkratio = %f\n", shrinkratio);
   Mat dsframe; //down sampled frame
   resize( currframe, dsframe, Size(0,0), shrinkratio, shrinkratio );
 
@@ -69,11 +51,11 @@ vector<Rect> ObjDetTrack::casDetect(const Mat& currframe, Mat& dispWindow, bool 
   detResult.insert(detResult.end(), straightDetResult.begin(), straightDetResult.end());
 
   //implements detection after small angle rotations here. Could be really slow
-  detectAfterRot = false;
-  if(detectAfterRot){
+  //only do this if no straight detResults
+  if(detectAfterRot && detResult.size() == 0){
     vector<double> rotAngles;
-    rotAngles.push_back(-25);
-    rotAngles.push_back(25);
+    rotAngles.push_back(-30);
+    rotAngles.push_back(30);
 
     for(int ang_ind=0; ang_ind<rotAngles.size(); ang_ind++){
       Mat frameAfterRot;
@@ -118,7 +100,7 @@ vector<Rect> ObjDetTrack::casDetect(const Mat& currframe, Mat& dispWindow, bool 
   return detResult;
 }
 
-void ObjDetTrack::camTracking(const Mat& currframe, vector<Rect>& trackingWindow, Mat& dispWindow){
+vector<Rect> ObjDetTrack::camTracking(const Mat& currframe, vector<Rect>& trackingWindow, Mat& dispWindow){
   assert(trackingWindow.size() > 0);
 
   //convert to hsv and extract hue
@@ -146,13 +128,16 @@ void ObjDetTrack::camTracking(const Mat& currframe, vector<Rect>& trackingWindow
       Mat roi(hue, trackingWindow[i]);
 
       //create a mask that pass through only the oval/ellipse of the face detection window
-      Mat maskellipse = Mat::zeros(mask.size(), CV_8UC1);
-      Rect myrect = trackingWindow[i];
-      RotatedRect myrotrect = RotatedRect(Point2f(myrect.x+myrect.width/2, myrect.y+myrect.height/2),
-        Size2f(myrect.width, myrect.height), 0);
-      ellipse( maskellipse, myrotrect, Scalar(255), -1, 8);
-      maskellipse &= mask;
-      Mat maskroi(maskellipse, trackingWindow[i]);
+      //the point was to only collect skin color into the histogram,
+      //and block out background colors in the corners of the rectangle
+      //but there is no point anymore, because I am tuning the color histogram purely for skin hues
+      // Mat maskellipse = Mat::zeros(mask.size(), CV_8UC1);
+      // Rect myrect = trackingWindow[i];
+      // RotatedRect myrotrect = RotatedRect(Point2f(myrect.x+myrect.width/2, myrect.y+myrect.height/2),
+      //   Size2f(myrect.width, myrect.height), 0);
+      // ellipse( maskellipse, myrotrect, Scalar(255), -1, 8);
+      // maskellipse &= mask;
+      Mat maskroi(mask, trackingWindow[i]);
 
       objHueHist.push_back(Mat());
       calcHist(&roi, 1, &ch, maskroi, objHueHist[i], 1, &hsize, &phranges);
@@ -174,6 +159,7 @@ void ObjDetTrack::camTracking(const Mat& currframe, vector<Rect>& trackingWindow
     }
   }
  
+  vector<Rect> boundWindow;
   //backprojection and camshift
   for(int i=0; i<trackingWindow.size(); i++){
     Mat backproj;
@@ -182,11 +168,14 @@ void ObjDetTrack::camTracking(const Mat& currframe, vector<Rect>& trackingWindow
     backproj &= mask;
 
     RotatedRect trackBox = CamShift(backproj, trackingWindow[i], TermCriteria( TermCriteria::EPS | TermCriteria::COUNT, 10, 1 ));
+    boundWindow.push_back(trackBox.boundingRect());
 
     //draw the tracking boxes onto the new frame
     ellipse( dispWindow, trackBox, Scalar(0,0,255), 3, LINE_AA );
     rectangle( dispWindow, trackingWindow[i], Scalar(0,255,255), 3, LINE_AA);
   } 
+
+  return boundWindow;
 }
 
 //remove detection rectangles/windows that have too much overlap with each other
@@ -238,6 +227,8 @@ void ObjDetTrack::histPeakAccent(Mat& hist, int farthestBinFromPeak){
   float max = 0;
   int max_ind = 0;
   int hsize = hist.size().height;
+
+  //find peak hue
   for(int i=0; i<hsize; i++){
     if(max < hist.at<float>(i)){
       max = hist.at<float>(i);
@@ -245,14 +236,20 @@ void ObjDetTrack::histPeakAccent(Mat& hist, int farthestBinFromPeak){
     }
   }
 
-  for(int i=max_ind+1; i<hsize && i<=max_ind+farthestBinFromPeak; i++){
-    hist.at<float>(i) = hist.at<float>(i)*exp(-(i-max_ind));
+  if(farthestBinFromPeak <= 0){
+    farthestBinFromPeak = 1;
   }
-  for(int i=max_ind-1; i>=0 && i>=max_ind-farthestBinFromPeak; i--){
-    hist.at<float>(i) = hist.at<float>(i)*exp((i-max_ind));
-  }
+
+  //hue range wraps around
   for(int i=0; i<hsize; i++){
-    if(i < max_ind-farthestBinFromPeak || max_ind+farthestBinFromPeak < i){
+    int dist2peak = min(abs(i-max_ind),max_ind+(hsize-i));
+
+    //exponential decay hue contribution by distance from peak hue
+    if(dist2peak < farthestBinFromPeak){
+      hist.at<float>(i) = hist.at<float>(i)*exp(-dist2peak);
+    }
+    //set hue contribution to 0 for hues too far from peak hue
+    else{
       hist.at<float>(i) = 0;
     }
   }
@@ -260,6 +257,9 @@ void ObjDetTrack::histPeakAccent(Mat& hist, int farthestBinFromPeak){
 
 void ObjDetTrack::thereisnobluepeople(Mat& hist){
   int hsize = hist.size().height;
+
+  //take advantage of the fact that no one's skin hue is blue
+  //reduce hue contribution from blue range of the hue
   for(int i=(hsize*2/5); i<(int)(hsize*4/5); i++){
     hist.at<float>(i) = hist.at<float>(i)*0.3;
   }
@@ -313,10 +313,57 @@ Mat ObjDetTrack::rotateFrame(const Mat& frame, Mat& frameAfterRot, double rotDeg
   return revRotM;
 }
 
-ObjDetTrack::ObjDetTrack(vector<CascadeClassifier> newAllCas, vector<Mat> newObjHueHist, double newShrinkRatio){
+vector<Rect> ObjDetTrack::revRotOnRects(vector<Rect> rotDetResult, Mat revRotM, Size2f orig_size){
+  vector<Rect> casResultOrigCoord;
+
+  //Probably use minAreaRect next time I refactor this
+  //minAreaRect finds me the bounding RotatedRect which I can use to find 
+  //the bounding Rect around the RotatedRect
+
+  for(int j=0; j<rotDetResult.size(); j++){
+    Rect cr = rotDetResult[j];
+    Point2f crinit[] = 
+      {transformPt(revRotM, Point2f(cr.x,cr.y)),
+       transformPt(revRotM, Point2f(cr.x+cr.width,cr.y)),
+       transformPt(revRotM, Point2f(cr.x,cr.y+cr.height)),
+       transformPt(revRotM, Point2f(cr.x+cr.width,cr.y+cr.height))};
+
+    int min_x = orig_size.width;
+    int max_x = 0;
+    int min_y = orig_size.height;
+    int max_y = 0;
+    for(int i=0; i<4; i++){
+      min_x = min((int)crinit[i].x, min_x);
+      max_x = max((int)crinit[i].x, max_x);
+      min_y = min((int)crinit[i].y, min_y);
+      max_y = max((int)crinit[i].y, max_y);
+    }
+    min_x = max(min_x, 0);
+    max_x = min(max_x, (int)orig_size.width);
+    min_y = max(min_y, 0);
+    max_y = min(max_y, (int)orig_size.height);
+    casResultOrigCoord.push_back( Rect(Point2f(min_x,min_y),Size2f(max_x-min_x,max_y-min_y)) );
+  }
+
+  return casResultOrigCoord; 
+}
+
+Point2f ObjDetTrack::transformPt(Mat affM, Point2f pt){
+  return Point2f(
+    affM.at<double>(0,0)*pt.x+affM.at<double>(0,1)*pt.y+affM.at<double>(0,2),
+    affM.at<double>(1,0)*pt.x+affM.at<double>(1,1)*pt.y+affM.at<double>(1,2));
+}
+
+ObjDetTrack::ObjDetTrack(){
+  shrinkratio = 1;
+}
+
+ObjDetTrack::ObjDetTrack(vector<CascadeClassifier> newAllCas, 
+  vector<Mat> newObjHueHist, double newShrinkRatio, Mat newConfidenceMap){
   allcas = newAllCas;
   objHueHist = newObjHueHist;
   shrinkratio = newShrinkRatio;
+  confidenceMap = newConfidenceMap;
 }
 
 vector<CascadeClassifier> ObjDetTrack::getAllCas(){
@@ -344,5 +391,14 @@ void ObjDetTrack::setShrinkRatio(double newShrinkRatio){
     shrinkratio = newShrinkRatio;
   }
 }
+
+//local debugging function, prints out a rotation matrix
+void printRotM(Mat revRotM, string title){
+    printf("===%s\n",title.c_str());
+    printf("affM.size %d %d\n",revRotM.rows,revRotM.cols);
+    printf("affM: %f %f %f\n",revRotM.at<double>(0,0),revRotM.at<double>(0,1),revRotM.at<double>(0,2));
+    printf("affM: %f %f %f\n",revRotM.at<double>(1,0),revRotM.at<double>(1,1),revRotM.at<double>(1,2));
+}
+
 
 
