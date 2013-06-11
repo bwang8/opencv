@@ -106,7 +106,7 @@ vector<Rect> ObjDetTrack::casDetect(const Mat& currframe, Mat& dispWindow, bool 
 
   //draw detected objects/faces onto dispWindow
   for(int i=0; i<detResult.size(); i++){
-    rectangle(dispWindow, detResult[i], Scalar(0,255,0), 3, LINE_AA);
+    rectangle(dispWindow, detResult[i], Scalar(0,255,0), 3, 16);
   }
 
   return detResult;
@@ -185,8 +185,8 @@ vector<Rect> ObjDetTrack::camTracking(const Mat& currframe, vector<Rect>& tracki
     boundWindow.push_back(trackBox.boundingRect());
 
     //draw the tracking boxes onto the new frame
-    ellipse( dispWindow, trackBox, Scalar(0,0,255), 3, LINE_AA );
-    rectangle( dispWindow, trackingWindow[i], Scalar(0,255,255), 3, LINE_AA);
+    ellipse( dispWindow, trackBox, Scalar(0,0,255), 3, 16 );
+    rectangle( dispWindow, trackingWindow[i], Scalar(0,255,255), 3, 16);
   } 
 
   return boundWindow;
@@ -290,7 +290,7 @@ void ObjDetTrack::resizeRect(Rect& myrect, double widthScale, double heightScale
 void ObjDetTrack::displayFaceBox(string winName, Mat& frame, vector<Rect> cascadeDetectionResults){
   namedWindow(winName);
   for(int myi=0; myi<cascadeDetectionResults.size(); myi++)
-    rectangle(frame, cascadeDetectionResults[myi], Scalar(255), 3, LINE_AA);
+    rectangle(frame, cascadeDetectionResults[myi], Scalar(255), 3, 16);
 
   if(cascadeDetectionResults.size()!=0)
     imshow(winName, frame);
