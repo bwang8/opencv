@@ -15,20 +15,30 @@ Mat ObjDetTrack::updateConfidenceMap(vector<Rect> detResult, int detOrTrackUpdat
       detResult[i].height = min(1.6*detResult[i].height, (double)mapSize.height-detResult[i].y);
 
       confroi = confidenceMap(detResult[i]);
-      confroi = 3; 
+      confroi = 5; 
       //constant because this is detection phase, confidence map resets at beginning of phase
     } else{
       //expand window in x direction (widen) if tracking
-      detResult[i].x = max(detResult[i].x-0.2*detResult[i].width, 0.0);
-      detResult[i].width = min(1.4*detResult[i].width, (double)mapSize.width-detResult[i].x);
+      detResult[i].x = max(detResult[i].x-0.4*detResult[i].width, 0.0);
+      detResult[i].width = min(1.8*detResult[i].width, (double)mapSize.width-detResult[i].x);
 
       confroi = confidenceMap(detResult[i]);
-      confroi = 2;
+      confroi += 0.1;
     }
   }
 
   normalize(confidenceMap, confidenceMap, mapSize.area(), 0, NORM_L1);
   return confidenceMap;
+}
+
+void reducePixelRepresentation(Mat& frame, int numLevels){
+  //not really quantization (as in picking most frequently occurring color and do NN to cluster every color to these)
+
+  for(int i=0; i<frame.rows; i++){
+    for(int j=0; j<frame.cols; j++){
+      frame.at<uchar>(i,j) = floor(frame.at<uchar>(i,j)/numLevels) * numLevels;
+    }
+  }
 }
 
 vector<Rect> ObjDetTrack::casDetect(const Mat& currframe, Mat& dispWindow, bool detectAfterRot){
@@ -42,6 +52,8 @@ vector<Rect> ObjDetTrack::casDetect(const Mat& currframe, Mat& dispWindow, bool 
   cvtColor( dsframe, frame_gray, COLOR_BGR2GRAY );
   equalizeHist( frame_gray, frame_gray );
 
+  reducePixelRepresentation(frame_gray, (256/16));
+
   //put all detection results here
   vector<Rect> detResult;
   
@@ -52,7 +64,7 @@ vector<Rect> ObjDetTrack::casDetect(const Mat& currframe, Mat& dispWindow, bool 
 
   //implements detection after small angle rotations here. Could be really slow
   //only do this if no straight detResults
-  if(detectAfterRot && detResult.size() == 0){
+  if(detectAfterRot){// && detResult.size() == 0){
     vector<double> rotAngles;
     rotAngles.push_back(-30);
     rotAngles.push_back(30);
@@ -66,7 +78,7 @@ vector<Rect> ObjDetTrack::casDetect(const Mat& currframe, Mat& dispWindow, bool 
       strs << rotAngles[ang_ind];
       string anglestr = strs.str();
       printf("detected ==%d== sideways angle %f\n", (int) rotDetResult.size(), rotAngles[ang_ind]);
-      displayFaceBox("detection after rotation "+anglestr, frameAfterRot, rotDetResult);
+      //displayFaceBox("detection after rotation "+anglestr, frameAfterRot, rotDetResult);
 
       vector<Rect> revRotDetResult = revRotOnRects(rotDetResult, revRotM, frame_gray.size());
       
@@ -128,7 +140,7 @@ vector<Rect> ObjDetTrack::camTracking(const Mat& currframe, vector<Rect>& tracki
       Mat roi(hue, trackingWindow[i]);
 
       //create a mask that pass through only the oval/ellipse of the face detection window
-      //the point was to only collect skin color into the histogram,
+      //the point was for the mask to only allow skin color into the histogram,
       //and block out background colors in the corners of the rectangle
       //but there is no point anymore, because I am tuning the color histogram purely for skin hues
       // Mat maskellipse = Mat::zeros(mask.size(), CV_8UC1);
@@ -167,6 +179,8 @@ vector<Rect> ObjDetTrack::camTracking(const Mat& currframe, vector<Rect>& tracki
     calcBackProject(&hue, 1, &ch, objHueHist[i], backproj, &phranges);
     backproj &= mask;
 
+    //meanShift(backproj, trackingWindow[i], TermCriteria( TermCriteria::EPS | TermCriteria::COUNT, 10, 1 ));
+    
     RotatedRect trackBox = CamShift(backproj, trackingWindow[i], TermCriteria( TermCriteria::EPS | TermCriteria::COUNT, 10, 1 ));
     boundWindow.push_back(trackBox.boundingRect());
 

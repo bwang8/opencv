@@ -31,6 +31,12 @@ int main(){
   allCas.push_back(fface_cas);
   allCas.push_back(pface_cas);
 
+printf("Numtrheads %d\n", getNumThreads());
+printf("setting numthreads to 1\n");
+setNumThreads(1);
+printf("Numtrheads %d\n", getNumThreads());
+
+
   //create display window
   namedWindow("haar cascade and camshift", 0);
   namedWindow("confidence map");
@@ -54,6 +60,8 @@ int main(){
 
   ObjDetTrack faceDT = ObjDetTrack(allCas, vector<Mat>(), 0.7, Mat());
 
+  vector<Rect> startingDetResult;
+
   for(int cycle = 0; ;cycle++){
     cap>>currframe;
     if(currframe.empty()){
@@ -75,6 +83,7 @@ int main(){
       if(detResult.size() > 0){
         detOrTrackFlag = 1;
         faceDT.setObjHueHist(vector<Mat>()); //clear to regenerate color histogram
+        startingDetResult = detResult; //make a backup copy
       }
 
       confMap = faceDT.updateConfidenceMap(detResult, 0, currframe.size());
@@ -104,13 +113,19 @@ int main(){
 
       //redo detection if horizontal:vertical window ratio is too high
       //expect face to be upright
-      //sanity check on detection sizes
-      
+
+      //if tracking box for faces grew too much since the detection phase, redo detection
+      for(int i=0; i<startingDetResult.size(); i++){
+        if(detResult[i].area() > 4*startingDetResult[i].area()){
+          detOrTrackFlag = 0;
+        }
+      }
 
       confMap = faceDT.updateConfidenceMap(detResult, 1, currframe.size());
       imshow("confidence map", confMap);
       break;
     }
+
     char c = (char)waitKey(10);
     switch(c){
     case 'd':
@@ -124,6 +139,21 @@ int main(){
     default:
       break;
     }
+
+    //super-impose heat map onto display
+    Mat tempMat;
+    normalize(confMap, tempMat, 0, 0.5, NORM_MINMAX);
+    Mat tempMap;
+    cvtColor(tempMat, tempMap, COLOR_GRAY2RGB);
+    Mat temp;
+    tempMap.convertTo(temp, CV_8U, 256);
+    dispWindow += temp;
+
+    // for(int i=0; i<confMap.rows; i++){
+    //   for(int j=0; j<confMap.cols; j++){
+    //     dispWindow
+    //   }
+    // }
 
     //display
     imshow("haar cascade and camshift", dispWindow);
