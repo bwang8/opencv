@@ -10,49 +10,47 @@
 #include <math.h> 
 #include <string>
 
-using namespace std;
-using namespace cv;
 
 class ObjDetTrack{
 public:
-  vector<Rect> casDetect(const Mat& currframe, Mat& dispWindow, bool detectAfterRot=false);
-  vector<Rect> camTracking(const Mat& currframe, vector<Rect>& trackingWindow, Mat& dispWindow);
-  void removeOverlapWindows(Size frameSize, vector<Rect>& trackingWindow, double overlap_frac_criteria=0.5);
-  Mat updateConfidenceMap(vector<Rect> detResult, int detOrTrackUpdateFlag, Size2i mapSize);
+  std::vector<cv::Rect> casDetect(const cv::Mat& currframe, cv::Mat& dispWindow, bool detectAfterRot=false);
+  std::vector<cv::Rect> camTracking(const cv::Mat& currframe, std::vector<cv::Rect>& trackingWindow, cv::Mat& dispWindow);
+  void removeOverlapWindows(cv::Size frameSize, std::vector<cv::Rect>& trackingWindow, double overlap_frac_criteria=0.5);
+  cv::Mat updateConfidenceMap(std::vector<cv::Rect> detResult, int detOrTrackUpdateFlag, cv::Size2i mapSize);
 
   //debugging display functions
-  void displayFaceBox(string winName, Mat& frame, vector<Rect> cascadeDetectionResults);
-  void displayColorHist(string winName, int hsize, Mat& hist);
+  void displayFaceBox(std::string winName, cv::Mat& frame, std::vector<cv::Rect> cascadeDetectionResults);
+  void displayColorHist(std::string winName, int hsize, cv::Mat& hist);
 
   ObjDetTrack();
-  ObjDetTrack(vector<CascadeClassifier> allcas, vector<Mat> objHueHist, double shrinkratio, Mat newConfidenceMap);
-  vector<CascadeClassifier> getAllCas();
-  void setAllCas(vector<CascadeClassifier> newAllCas);
-  vector<Mat> getObjHueHist();
-  void setObjHueHist(vector<Mat> newObjHueHist);
+  ObjDetTrack(std::vector<cv::CascadeClassifier> allcas, std::vector<cv::Mat> objHueHist, double shrinkratio, cv::Mat newConfidenceMap);
+  std::vector<cv::CascadeClassifier> getAllCas();
+  void setAllCas(std::vector<cv::CascadeClassifier> newAllCas);
+  std::vector<cv::Mat> getObjHueHist();
+  void setObjHueHist(std::vector<cv::Mat> newObjHueHist);
   double getShrinkRatio();
   void setShrinkRatio(double newShrinkRatio);
 
 private:
-  vector<CascadeClassifier> allcas;
-  vector<Mat> objHueHist; 
+  std::vector<cv::CascadeClassifier> allcas;
+  std::vector<cv::Mat> objHueHist; 
   double shrinkratio;
-  Mat confidenceMap;
+  cv::Mat confidenceMap;
 
   //helper for CAMshift tracking
-  void histPeakAccent(Mat& hist, int farthestBinFromPeak);
-  void thereisnobluepeople(Mat& hist);
+  void histPeakAccent(cv::Mat& hist, int farthestBinFromPeak);
+  void thereisnobluepeople(cv::Mat& hist);
 
   //helper for haar wavelet cascade face/object detection
-  vector<Rect> runAllCascadeOnFrame(const Mat& frame);
+  std::vector<cv::Rect> runAllCascadeOnFrame(const cv::Mat& frame);
   //extra functionality beyond opencv's rotation ability
   //keep entire image without cropping parts that don't fit in old frame
-  Mat rotateFrame(const Mat& frame, Mat& frameAfterRot, double rotDegree);
-  vector<Rect> revRotOnRects(vector<Rect> rotDetResult, Mat revRotM, Size2f orig_size);
+  cv::Mat rotateFrame(const cv::Mat& frame, cv::Mat& frameAfterRot, double rotDegree);
+  std::vector<cv::Rect> revRotOnRects(std::vector<cv::Rect> rotDetResult, cv::Mat revRotM, cv::Size2f orig_size);
 
   //general helper/functionality that opencv should have
-  Point2f transformPt(Mat affM, Point2f pt);
-  void resizeRect(Rect& myrect, double widthScale, double heightScale);
+  cv::Point2f transformPt(cv::Mat affM, cv::Point2f pt);
+  void resizeRect(cv::Rect& myrect, double widthScale, double heightScale);
 
 };
 

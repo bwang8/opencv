@@ -1,45 +1,45 @@
 #include "objdettrack.h"
 
-string fface_cas_fn = "../../data/haarcascades/haarcascade_frontalface_alt.xml";
-string pface_cas_fn = "../../data/haarcascades/haarcascade_profileface.xml";
+std::string fface_cas_fn = "/home/bwang/dev/opencv/data/haarcascades/haarcascade_frontalface_alt.xml";
+std::string pface_cas_fn = "/home/bwang/dev/opencv/data/haarcascades/haarcascade_profileface.xml";
 
-string fface_lbp_cas_fn = "../../data/lbpcascades/lbpcascade_frontalface.xml";
-string pface_lbp_cas_fn = "../../data/lbpcascades/lbpcascade_profileface.xml";
+//std::string fface_lbp_cas_fn = "~/dev/opencv/data/lbpcascades/lbpcascade_frontalface.xml";
+//std::string pface_lbp_cas_fn = "~/dev/opencv/data/lbpcascades/lbpcascade_profileface.xml";
 
-string window_name = "Capture - Face detection";
+std::string window_name = "Capture - Face detection";
 //RNG rng(12345);
 
 int main(){
   //initialize capturing
-  VideoCapture cap;
+  cv::VideoCapture cap;
   int camNum = 0; //webcam
   cap.open(camNum);
   if( !cap.isOpened() ){
-    cout << "***Could not initialize capturing...***\n";
-    cout << "Current parameter's value: \n";
+    std::cout << "***Could not initialize capturing...***\n";
+    std::cout << "Current parameter's value: \n";
     return -1;
   }
  
   //load pretrained cascade classifiers in xml format
-  CascadeClassifier fface_cas;
-  CascadeClassifier pface_cas;
+  cv::CascadeClassifier fface_cas;
+  cv::CascadeClassifier pface_cas;
   if( !fface_cas.load( fface_cas_fn ) ){ printf("--(!)Error loading\n"); return -1; };
   if( !pface_cas.load( pface_cas_fn ) ){ printf("--(!)Error loading\n"); return -1; };
 
   //place all cascade classifiers together
-  vector<CascadeClassifier> allCas;
+  std::vector<cv::CascadeClassifier> allCas;
   allCas.push_back(fface_cas);
   allCas.push_back(pface_cas);
 
-printf("Numtrheads %d\n", getNumThreads());
+printf("Numtrheads %d\n", cv::getNumThreads());
 printf("setting numthreads to 1\n");
-setNumThreads(1);
-printf("Numtrheads %d\n", getNumThreads());
+cv::setNumThreads(1);
+printf("Numtrheads %d\n", cv::getNumThreads());
 
 
   //create display window
-  namedWindow("haar cascade and camshift", 0);
-  namedWindow("confidence map");
+  cv::namedWindow("haar cascade and camshift", 0);
+  cv::namedWindow("confidence map");
 
   /*
     detect-cycle 
@@ -53,14 +53,14 @@ printf("Numtrheads %d\n", getNumThreads());
   */
 
   //start detection and tracking loop
-  Mat currframe;
-  vector<Rect> detResult;
+  cv::Mat currframe;
+  std::vector<cv::Rect> detResult;
   int detOrTrackFlag = 0; //0 for detection, 1 for tracking
   int num_tracked_objects = 0;
 
-  ObjDetTrack faceDT = ObjDetTrack(allCas, vector<Mat>(), 0.7, Mat());
+  ObjDetTrack faceDT = ObjDetTrack(allCas, std::vector<cv::Mat>(), 0.7, cv::Mat());
 
-  vector<Rect> startingDetResult;
+  std::vector<cv::Rect> startingDetResult;
 
   for(int cycle = 0; ;cycle++){
     cap>>currframe;
@@ -69,9 +69,9 @@ printf("Numtrheads %d\n", getNumThreads());
     }
 
     //display
-    Mat dispWindow;
+    cv::Mat dispWindow;
     currframe.copyTo(dispWindow);
-    Mat confMap;
+    cv::Mat confMap;
 
     switch(detOrTrackFlag){
     //DETECTION PHASE
@@ -82,7 +82,7 @@ printf("Numtrheads %d\n", getNumThreads());
 
       if(detResult.size() > 0){
         detOrTrackFlag = 1;
-        faceDT.setObjHueHist(vector<Mat>()); //clear to regenerate color histogram
+        faceDT.setObjHueHist(std::vector<cv::Mat>()); //clear to regenerate color histogram
         startingDetResult = detResult; //make a backup copy
       }
 
@@ -126,7 +126,7 @@ printf("Numtrheads %d\n", getNumThreads());
       break;
     }
 
-    char c = (char)waitKey(10);
+    char c = (char)cv::waitKey(10);
     switch(c){
     case 'd':
       printf("======current shrink ratio : %f\n", faceDT.getShrinkRatio());
@@ -141,11 +141,11 @@ printf("Numtrheads %d\n", getNumThreads());
     }
 
     //super-impose heat map onto display
-    Mat tempMat;
-    normalize(confMap, tempMat, 0, 0.5, NORM_MINMAX);
-    Mat tempMap;
-    cvtColor(tempMat, tempMap, COLOR_GRAY2RGB);
-    Mat temp;
+    cv::Mat tempMat;
+    normalize(confMap, tempMat, 0, 0.5, cv::NORM_MINMAX);
+    cv::Mat tempMap;
+    cvtColor(tempMat, tempMap, cv::COLOR_GRAY2RGB);
+    cv::Mat temp;
     tempMap.convertTo(temp, CV_8U, 256);
     dispWindow += temp;
 
@@ -156,7 +156,7 @@ printf("Numtrheads %d\n", getNumThreads());
     // }
 
     //display
-    imshow("haar cascade and camshift", dispWindow);
+    cv::imshow("haar cascade and camshift", dispWindow);
   }
 
 }
