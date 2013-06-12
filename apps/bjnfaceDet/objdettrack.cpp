@@ -7,7 +7,7 @@ cv::Mat ObjDetTrack::updateConfidenceMap(std::vector<cv::Rect> detResult, int de
     normalize(confidenceMap, confidenceMap, mapSize.area(), 0, cv::NORM_L1);
   }
 
-  for(int i=0; i<detResult.size(); i++){
+  for(uint32_t i=0; i<detResult.size(); i++){
     cv::Mat confroi;
     if(detOrTrackUpdateFlag == 0){
       //expand window in y direction (heighten/elongate) if detection 
@@ -100,12 +100,12 @@ std::vector<cv::Rect> ObjDetTrack::casDetect(const cv::Mat& currframe, cv::Mat& 
   printf("post overlap elimination: detected %d faces/objects\n", (int) detResult.size());
 
   //reverse downsampling of image, by resizing detection rectangles/windows
-  for(int i=0; i<detResult.size(); i++){
+  for(uint32_t i=0; i<detResult.size(); i++){
     resizeRect(detResult[i], 1/shrinkratio, 1/shrinkratio);
   }
 
   //draw detected objects/faces onto dispWindow
-  for(int i=0; i<detResult.size(); i++){
+  for(uint32_t i=0; i<detResult.size(); i++){
     rectangle(dispWindow, detResult[i], cv::Scalar(0,255,0), 3, 16);
   }
 
@@ -136,7 +136,7 @@ std::vector<cv::Rect> ObjDetTrack::camTracking(const cv::Mat& currframe, std::ve
     objHueHist.clear();
 
     //create color histogram for a new object
-    for(int i=0; i<trackingWindow.size(); i++){
+    for(uint32_t i=0; i<trackingWindow.size(); i++){
       cv::Mat roi(hue, trackingWindow[i]);
 
       //create a mask that pass through only the oval/ellipse of the face detection window
@@ -173,7 +173,7 @@ std::vector<cv::Rect> ObjDetTrack::camTracking(const cv::Mat& currframe, std::ve
  
   std::vector<cv::Rect> boundWindow;
   //backprojection and camshift
-  for(int i=0; i<trackingWindow.size(); i++){
+  for(uint32_t i=0; i<trackingWindow.size(); i++){
     cv::Mat backproj;
 
     calcBackProject(&hue, 1, &ch, objHueHist[i], backproj, &phranges);
@@ -256,7 +256,7 @@ void ObjDetTrack::histPeakAccent(cv::Mat& hist, int farthestBinFromPeak){
 
   //hue range wraps around
   for(int i=0; i<hsize; i++){
-    int dist2peak = std::min(abs(i-max_ind),max_ind+(hsize-i));
+    int dist2peak = std::min( std::min(abs(i-max_ind),max_ind+(hsize-i)) , (hsize-max_ind)+i );
 
     //exponential decay hue contribution by distance from peak hue
     if(dist2peak < farthestBinFromPeak){
@@ -299,7 +299,7 @@ void ObjDetTrack::displayFaceBox(std::string winName, cv::Mat& frame, std::vecto
 std::vector<cv::Rect> ObjDetTrack::runAllCascadeOnFrame(const cv::Mat& frame){
   std::vector<cv::Rect> allCasResult;
 
-  for(int i=0; i<allcas.size(); i++){
+  for(uint32_t i=0; i<allcas.size(); i++){
     std::vector<cv::Rect> casResult;
     allcas[i].detectMultiScale(frame, casResult, 1.1, 4, 0|cv::CASCADE_SCALE_IMAGE, cv::Size(30*shrinkratio, 30*shrinkratio) );
     allCasResult.insert(allCasResult.end(), casResult.begin(), casResult.end());
@@ -334,7 +334,7 @@ std::vector<cv::Rect> ObjDetTrack::revRotOnRects(std::vector<cv::Rect> rotDetRes
   //minAreaRect finds me the bounding RotatedRect which I can use to find 
   //the bounding Rect around the RotatedRect
 
-  for(int j=0; j<rotDetResult.size(); j++){
+  for(uint32_t j=0; j<rotDetResult.size(); j++){
     cv::Rect cr = rotDetResult[j];
     cv::Point2f crinit[] = 
       {transformPt(revRotM, cv::Point2f(cr.x,cr.y)),
