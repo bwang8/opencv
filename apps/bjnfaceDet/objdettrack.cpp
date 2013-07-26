@@ -50,7 +50,9 @@ std::vector<cv::Rect> ObjDetTrack::casDetect(const cv::Mat& currframe, cv::Mat& 
   //convert to gray and equalize
   cv::Mat frame_gray;
   cvtColor( dsframe, frame_gray, cv::COLOR_BGR2GRAY );
+imwrite("/home/bwang/dev/opencv/apps/bjnfaceDet/Graycap.jpg",frame_gray);
   equalizeHist( frame_gray, frame_gray );
+imwrite("/home/bwang/dev/opencv/apps/bjnfaceDet/eqGraycap.jpg",frame_gray);
 
   reducePixelRepresentation(frame_gray, (256/16));
 
@@ -69,7 +71,7 @@ std::vector<cv::Rect> ObjDetTrack::casDetect(const cv::Mat& currframe, cv::Mat& 
     rotAngles.push_back(-30);
     rotAngles.push_back(30);
 
-    for(int ang_ind=0; ang_ind<rotAngles.size(); ang_ind++){
+    for(uint32_t ang_ind=0; ang_ind<rotAngles.size(); ang_ind++){
       cv::Mat frameAfterRot;
       cv::Mat revRotM = rotateFrame(frame_gray, frameAfterRot, rotAngles[ang_ind]);
       std::vector<cv::Rect> rotDetResult = runAllCascadeOnFrame(frameAfterRot);
@@ -260,7 +262,7 @@ void ObjDetTrack::histPeakAccent(cv::Mat& hist, int farthestBinFromPeak){
 
     //exponential decay hue contribution by distance from peak hue
     if(dist2peak < farthestBinFromPeak){
-      hist.at<float>(i) = hist.at<float>(i)*exp(-dist2peak);
+      hist.at<float>(i) = hist.at<float>(i)*exp(-0.5*dist2peak);
     }
     //set hue contribution to 0 for hues too far from peak hue
     else{
@@ -289,7 +291,7 @@ void ObjDetTrack::resizeRect(cv::Rect& myrect, double widthScale, double heightS
 
 void ObjDetTrack::displayFaceBox(std::string winName, cv::Mat& frame, std::vector<cv::Rect> cascadeDetectionResults){
   cv::namedWindow(winName);
-  for(int myi=0; myi<cascadeDetectionResults.size(); myi++)
+  for(uint32_t myi=0; myi<cascadeDetectionResults.size(); myi++)
     rectangle(frame, cascadeDetectionResults[myi], cv::Scalar(255), 3, 16);
 
   if(cascadeDetectionResults.size()!=0)

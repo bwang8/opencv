@@ -20,4 +20,4 @@ objdettrack.o: objdettrack.cpp
 
 clean:
 	rm *.o dettrackdemo
-	rm -r *.dSYM/ 
+#	rm -r *.dSYM/ 

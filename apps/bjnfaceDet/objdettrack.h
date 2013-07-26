@@ -10,7 +10,6 @@
 #include <math.h> 
 #include <string>
 
-
 class ObjDetTrack{
 public:
   std::vector<cv::Rect> casDetect(const cv::Mat& currframe, cv::Mat& dispWindow, bool detectAfterRot=false);
